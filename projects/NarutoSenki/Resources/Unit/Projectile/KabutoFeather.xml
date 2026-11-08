@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<unit>
+
+	<!-- Struktur 8-action WAJIB persis urutan ini (positional parsing, lihat Bullet::setID
+	     & CHARACTER_SYSTEM.md §2) meski Bullet cuma benar-benar baca index 0 (Idle) & 7
+	     (nAttack)  — index lain dibiarkan kosong seperti contoh BoneBullet.xml bawaan.
+	     Frame name di bawah = grup "Feathers" pada Kabuto_frames__4_.json (Kabuto_Feathers_01..03),
+	     BUKAN atlas terpisah  — 3 frame ini sudah ikut dibundel ke Kabuto.plist yang sama karena
+	     berasal dari satu PNG sheet yang sama, dan otomatis sudah ada di SpriteFrameCache begitu
+	     Kabuto sendiri dimuat (feather cuma pernah di-spawn LEWAT Kabuto::spawnNehanShoujoFeathers(),
+	     jadi Kabuto pasti sudah alive/plist-nya sudah ke-load duluan). Tidak perlu
+	     KabutoFeather.plist/.pvr.ccz terpisah. -->
+
+	<action name="Idle">
+		<frame>
+			<f>Kabuto_Feathers_01</f>
+		</frame>
+	</action>
+
+	<action name="Walk">
+		<frame>
+		</frame>
+	</action>
+
+	<action name="Hurt">
+		<frame>
+		</frame>
+	</action>
+
+	<action name="AirHurt">
+		<frame>
+		</frame>
+	</action>
+
+	<action name="KnockDown">
+		<frame>
+		</frame>
+	</action>
+
+	<action name="Float">
+		<frame>
+		</frame>
+	</action>
+
+	<action name="Dead">
+		<frame>
+		</frame>
+	</action>
+
+	<action name="nAttack">
+		<data>
+			<p type="attackType">kb_feather_hit</p>
+			<p type="attackValue">0</p>
+			<p type="attackRangeX">32</p>
+			<p type="attackRangeY">32</p>
+			<p type="cd">0</p>
+		</data>
+		<frame>
+			<f>Kabuto_Feathers_01</f>
+			<e type="setAttackBox">c_hit</e>
+			<f>Kabuto_Feathers_02</f>
+			<f>Kabuto_Feathers_03</f>
+			<e type="setDelay">30</e>
+		</frame>
+	</action>
+
+</unit>
