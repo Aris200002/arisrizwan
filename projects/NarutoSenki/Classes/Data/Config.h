@@ -11,6 +11,7 @@
 #define kSpeedBase 480 / 1280
 
 extern int Cheats;
+extern bool enableCustomSelect;
 #define kMaxCheats 7
 
 #define kFlogCount 6
