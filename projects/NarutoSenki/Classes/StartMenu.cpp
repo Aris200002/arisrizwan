@@ -115,51 +115,42 @@ void MenuButton::ccTouchMoved(Touch *touch, Event *event)
 
 void MenuButton::ccTouchEnded(Touch *touch, Event *event)
 {
-    if (_isTop && !_startMenu->isDrag)
-    {
-        switch (_type)
-        {
-        case MenuButtonType::Training:
-        {
-            SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
-            _startMenu->onTrainingCallBack();
-            break;
-        }
-
-        case MenuButtonType::Credits:
-        {
-            SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
-            _startMenu->onCreditsCallBack();
-            break;
-        }
-
-        case MenuButtonType::Exit:
-        {
-            SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
-            _startMenu->onExitCallBack();
-            break;
-        }
-
-        case MenuButtonType::Custom:
-        case MenuButtonType::HardCore:
-        {
-            SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
-
-            auto frame = getSpriteFrame("menu05_text.png");
-            _startMenu->menuText->setDisplayFrame(frame);
-
-            _startMenu->onHardLayerCallBack();
-            break;
-        }
-        }
-    }
-    else
-    {
-        SimpleAudioEngine::sharedEngine()->playEffect(SELECT_SOUND);
-        prePosY = 0;
-        _startMenu->scrollMenu(getPositionY());
-        _startMenu->isDrag = false;
-    }
+	if (_isTop && !_startMenu->isDrag)
+	{
+		switch (_type)
+		{
+		case MenuButtonType::Training:
+			SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
+			_startMenu->onTrainingCallBack();
+			break;
+		case MenuButtonType::Credits:
+			SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
+			_startMenu->onCreditsCallBack();
+			break;
+		case MenuButtonType::Exit:
+			SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
+			_startMenu->onExitCallBack();
+			break;
+		case MenuButtonType::Custom:
+			SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
+			_startMenu->onHardLayerCallBack();
+			// TODO
+			break;
+		case MenuButtonType::HardCore:
+			SimpleAudioEngine::sharedEngine()->playEffect(SELECT_SOUND);
+			auto frame = getSpriteFrame("menu05_text.png");
+			_startMenu->menuText->setDisplayFrame(frame);
+			_startMenu->onHardLayerCallBack();
+			break;
+		}
+	}
+	else
+	{
+		SimpleAudioEngine::sharedEngine()->playEffect(SELECT_SOUND);
+		prePosY = 0;
+		_startMenu->scrollMenu(getPositionY());
+		_startMenu->isDrag = false;
+	}
 }
 
 void MenuButton::playSound()
