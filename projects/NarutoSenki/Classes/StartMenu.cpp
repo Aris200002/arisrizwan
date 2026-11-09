@@ -501,10 +501,10 @@ void StartMenu::onHardLayerCallBack()
 			Sprite *confirm_bg = Sprite::createWithSpriteFrameName("confirm_bg.png");
 			confirm_bg->setPosition(Vec2(winSize.width / 2, winSize.height / 2));
 
-			Sprite *hardcore_title = Sprite::createWithSpriteFrameName("hardcore_title.png");
+			Sprite *hardcore_title = Sprite::createWithSpriteFrameName("hcmode_title.png");
 			hardcore_title->setPosition(Vec2(winSize.width / 2, winSize.height / 2 + 38));
 
-			Sprite *hardcore_text = Sprite::createWithSpriteFrameName("hardcore_text.png");
+			Sprite *hardcore_text = Sprite::createWithSpriteFrameName("hcmode_text.png");
 			hardcore_text->setPosition(Vec2(winSize.width / 2, winSize.height / 2 + 8));
 
 			MenuItem *yes_btn = MenuItemSprite::create(Sprite::createWithSpriteFrameName("yes_btn1.png"), Sprite::createWithSpriteFrameName("yes_btn2.png"), this, menu_selector(StartMenu::onHardCoreOn));
