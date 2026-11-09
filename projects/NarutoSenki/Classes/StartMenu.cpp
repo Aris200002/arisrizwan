@@ -121,6 +121,7 @@ void MenuButton::ccTouchEnded(Touch *touch, Event *event)
 		{
 		case MenuButtonType::Training:
 			SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
+			enableCustomSelect = false;
 			_startMenu->onTrainingCallBack();
 			break;
 		case MenuButtonType::Credits:
@@ -137,11 +138,13 @@ void MenuButton::ccTouchEnded(Touch *touch, Event *event)
 			// TODO
 			break;
 		case MenuButtonType::HardCore:
+		{
 			SimpleAudioEngine::sharedEngine()->playEffect(SELECT_SOUND);
 			auto frame = getSpriteFrame("menu05_text.png");
 			_startMenu->menuText->setDisplayFrame(frame);
 			_startMenu->onHardLayerCallBack();
 			break;
+		}
 		}
 	}
 	else
@@ -468,6 +471,9 @@ void StartMenu::onHardCoreOn(Ref *sender)
 		hardCoreLayer->removeFromParent();
 		hardCoreLayer = nullptr;
 	}
+	// HardCore ON: buka layar pilih mode dengan pilih tim kustom aktif
+	enableCustomSelect = true;
+	onTrainingCallBack();
 }
 
 void StartMenu::onHardCoreOff(Ref *sender)
@@ -479,6 +485,9 @@ void StartMenu::onHardCoreOff(Ref *sender)
 		hardCoreLayer->removeFromParent();
 		hardCoreLayer = nullptr;
 	}
+	// HardCore OFF: alur biasa (Training)
+	enableCustomSelect = false;
+	onTrainingCallBack();
 }
 
 void StartMenu::onHardLayerCallBack()
@@ -511,6 +520,12 @@ void StartMenu::onHardLayerCallBack()
 			hardCoreLayer->addChild(hardcore_text, 650);
 			addChild(hardCoreLayer, 700);
 		}
+	}
+	else
+	{
+		// isHardCore sudah aktif tersimpan: lewati konfirmasi
+		enableCustomSelect = true;
+		onTrainingCallBack();
 	}
 }
 
