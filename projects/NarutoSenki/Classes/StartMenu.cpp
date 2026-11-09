@@ -133,7 +133,7 @@ void MenuButton::ccTouchEnded(Touch *touch, Event *event)
 			break;
 		case MenuButtonType::Custom:
 			SimpleAudioEngine::sharedEngine()->playEffect("Audio/Menu/confirm.ogg");
-   auto frame = getSpriteFrame("menu05_text.png");
+			auto frame = getSpriteFrame("menu05_text.png");
 			_startMenu->menuText->setDisplayFrame(frame);
 			_startMenu->onHardLayerCallBack();
 			// TODO
