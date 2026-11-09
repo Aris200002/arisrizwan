@@ -2382,6 +2382,7 @@ void CharacterBase::setBuff(int buffValue)
 
 		if (getName() == HeroEnum::Shino ||
 			getName() == HeroEnum::Sai ||
+			getName() == HeroEnum::Sakura ||
 			getName() == HeroEnum::Deidara)
 		{
 			if (_skillChangeBuffValue == 17)
@@ -3199,7 +3200,8 @@ Hero *CharacterBase::finalizeClone(Hero *clone, int cloneTime)
 	// combat death), not vanish on an arbitrary countdown -- so skip the forced timeout for them
 	// regardless of the cloneTime passed in the action XML. Every other clone-capable hero keeps
 	// the original timed-despawn behavior.
-	if (cloneTime > 0 && getName() != HeroEnum::Kabuto)
+	if (cloneTime > 0 && getName() != HeroEnum::Kabuto &&
+    getName() != HeroEnum::Kankuro)
 	{
 		clone->scheduleOnce(schedule_selector(Hero::removeClone), cloneTime);
 	}
