@@ -3,6 +3,9 @@
 #include "UI/ModeMenuButton.hpp"
 #include "Constants/UiFlowKeys.hpp"
 
+// Flag dari StartMenu.cpp (tombol Yes di kotak HardCore)
+extern bool enableCustomSelect;
+
 extern const GameData kDefaultGameData;
 
 // const GameModeData &GameModeData::from(const char *path)
