@@ -211,14 +211,10 @@ void LoadLayer::perloadCharIMG(const string &name)
 
 void LoadLayer::unloadCharIMG(CharacterBase *c)
 {
-	if (c == nullptr || c->isClone() || c->isSummon() || c->isGuardian())
+	// Kugutsu (Karasu, Sanshouuo, Saso, Mask*, Parents) share the master's resources
+	// and have no plist of their own, so they must be skipped like clones/summons.
+	if (c == nullptr || c->isClone() || c->isSummon() || c->isKugutsu() || c->isGuardian()))
 	{
-		// Guardians (Han/Roshi) live under "Unit/Guardian/..." and are
-		// unloaded separately via kGuardian_Han/kGuardian_Roshi in
-		// GameLayer::onLeft(). Building a "Unit/Ninja/..." path for them
-		// here points to a nonexistent plist, which fails to load and
-		// crashes (SIGSEGV null deref in CCSpriteFrameCache) when cocos2d-x
-		// tries to remove sprite frames from the null dictionary.
 		return;
 	}
 
@@ -288,9 +284,12 @@ void LoadLayer::unloadCharIMG(CharacterBase *c)
 
 void LoadLayer::unloadAllCharsIMG(const vector<Hero *> &players)
 {
-	vector<string> unloadVector(players.size());
+	vector<string> unloadVector;
+	unloadVector.reserve(players.size());
 	for (auto player : players)
 	{
+		if (player == nullptr)
+			continue;
 		auto name = player->getName();
 		if (std::find(unloadVector.begin(), unloadVector.end(), name) == unloadVector.end())
 		{
@@ -308,8 +307,7 @@ void LoadLayer::setLoadingAnimation(const char *player, int index)
 	loadingAvator->setAnchorPoint(Vec2(0, 0));
 
 	// FIXME: Use the other way get animation frame count
-	ssize_t frameCount = is_same(player, HeroEnum::Konan) ? 1
-		: 7;
+	ssize_t frameCount = is_same(player, HeroEnum::Konan) ? 1 : 7;
 	Vector<SpriteFrame *> animeFrames(frameCount);
 	for (int i = 1; i < frameCount; i++)
 	{
