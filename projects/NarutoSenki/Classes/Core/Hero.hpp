@@ -491,7 +491,11 @@ public:
 
 		if (!_monsterArray.empty() && getName() != HeroEnum::Minato)
 		{
-			for (auto mo : _monsterArray)
+			// Iterate over a copy: heroMo->dealloc() calls _master->removeMon(this)
+			// which erases from _monsterArray and would invalidate the iterator.
+			auto monsters = _monsterArray;
+			_monsterArray.clear();
+			for (auto mo : monsters)
 			{
 				if (auto heroMo = dynamic_cast<Hero *>(mo))
 				{
