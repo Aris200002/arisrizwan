@@ -16,7 +16,6 @@
 #include "Shinobi/Kakashi.hpp"
 #include "Shinobi/Kakuzu.hpp"
 #include "Shinobi/Kankuro.hpp"
-#include "Shinobi/Kabuto.hpp"
 #include "Shinobi/Karin.hpp"
 #include "Shinobi/Kiba.hpp"
 #include "Shinobi/Kimimaro.hpp"
@@ -103,7 +102,6 @@ public:
 		is("Kakuzu") 						ptr = new Kakuzu();
 		is("Kankuro") 						ptr = new Kankuro();
 		is("Karasu") 						ptr = new Karasu();
-		is("Kabuto") 						ptr = new Kabuto();
 		is("Karin") 						ptr = new Karin();
 		is("Kiba") 							ptr = new Kiba();
 		is("Kimimaro") 						ptr = new Kimimaro();
