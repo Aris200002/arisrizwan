@@ -96,7 +96,8 @@ public:
 				// If the character has changed, then cleanup
 				CCNotificationCenter::sharedNotificationCenter()->removeAllObservers(c);
 				c->stopAllActions();
-				for (auto mo : c->getMonsterArray())
+				auto monsters = c->getMonsterArray();
+				for (auto mo : monsters)
 				{
 					if (auto heroMo = dynamic_cast<Hero *>(mo))
 					{
