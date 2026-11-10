@@ -213,7 +213,7 @@ void LoadLayer::unloadCharIMG(CharacterBase *c)
 {
 	// Kugutsu (Karasu, Sanshouuo, Saso, Mask*, Parents) share the master's resources
 	// and have no plist of their own, so they must be skipped like clones/summons.
-	if (c == nullptr || c->isClone() || c->isSummon() || c->isKugutsu() || c->isGuardian()))
+	if (c == nullptr || c->isClone() || c->isSummon() || c->isKugutsu() || c->isGuardian())
 	{
 		return;
 	}
