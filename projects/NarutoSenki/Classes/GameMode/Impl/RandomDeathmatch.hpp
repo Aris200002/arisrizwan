@@ -19,37 +19,20 @@ public:
 	void init()
 	{
 		CCLOG("Enter Random Deathmatch mode.");
-
 		konohaRebornCount = kRebornCount;
 		akatsukiRebornCount = kRebornCount;
-
 		konohaLiveCount = kHeroAmount;
 		akatsukiLiveCount = kHeroAmount;
-
 		gd.isHardCore = true;
 	}
 
-	void onInitHeros()
-	{
-		initHeros(kHeroAmount, kHeroAmount);
-	}
-
-	void onGameStart()
-	{
-	}
-
-	void onGameOver()
-	{
-	}
-
-	void onCharacterInit(CharacterBase *c)
-	{
-	}
+	void onInitHeros() { initHeros(kHeroAmount, kHeroAmount); }
+	void onGameStart() {}
+	void onGameOver() {}
+	void onCharacterInit(CharacterBase *c) {}
 
 	void onCharacterDead(CharacterBase *c)
 	{
-		// CCLOG("[Character Dead] Name: %s, Role: %s, Group: %s", c->getName().c_str(), c->getRole(), c->getGroup());
-
 		if (c->isPlayerOrCom())
 		{
 			uint8_t &count = c->isKonohaGroup() ? konohaRebornCount : akatsukiRebornCount;
@@ -72,8 +55,6 @@ public:
 
 	void onCharacterReborn(CharacterBase *c)
 	{
-		// CCLOG("[Character Reborn] Name: %s, Role: %s, Group: %s", c->getName().c_str(), c->getRole(), c->getGroup());
-
 		if (c->isPlayerOrCom())
 		{
 			uint8_t liveCount = c->isKonohaGroup() ? konohaLiveCount++ : akatsukiLiveCount++;
@@ -82,9 +63,7 @@ public:
 		if (c->changeCharId > -1)
 		{
 			auto gameLayer = getGameLayer();
-			// initial a new random character
 			auto newCharName = heroVector.at(c->changeCharId);
-			// CCLOG("[Change Character] %s from %s to %s", c->getRole(), c->getName().c_str(), newCharName.c_str());
 
 			if (c->getName() == newCharName)
 			{
@@ -93,16 +72,13 @@ public:
 			}
 			else
 			{
-				// If the character has changed, then cleanup
 				CCNotificationCenter::sharedNotificationCenter()->removeAllObservers(c);
 				c->stopAllActions();
 				auto monsters = c->getMonsterArray();
 				for (auto mo : monsters)
 				{
 					if (auto heroMo = dynamic_cast<Hero *>(mo))
-					{
 						heroMo->dealloc();
-					}
 					else
 					{
 						CCNotificationCenter::sharedNotificationCenter()->removeAllObservers(mo);
@@ -111,7 +87,6 @@ public:
 						mo->removeFromParent();
 					}
 				}
-				// TODO: Remove all Clone
 
 				c->removeAllClones();
 				std::erase(getGameLayer()->_CharacterArray, c);
@@ -123,15 +98,12 @@ public:
 					c->getMaster()->removeMon(c);
 				c->removeFromParent();
 
-				// load new char assets
 				LoadLayer::perloadCharIMG(newCharName);
-				// Unload old character assets if not used by the other player or AI
 				auto oldCharName = c->getName();
 				if (std::find(heroVector.begin(), heroVector.end(), oldCharName) == heroVector.end())
-				{
 					LoadLayer::unloadCharIMG(c);
-				}
 			}
+
 			auto hudLayer = gameLayer->getHudLayer();
 			auto newChar = gameLayer->addHero(newCharName, c->getRole(), c->getGroup(), c->getSpawnPoint(), c->getCharId());
 			bool isPlayer = newChar->isPlayer();
@@ -145,24 +117,17 @@ public:
 			newChar->setGearArray(c->getGearArray());
 			newChar->changeHPbar();
 			newChar->updateDataByLVOnly();
+
 			for (auto gear : c->getGearArray())
 			{
 				if (gear == GearType::Gear00)
-				{
 					newChar->_isCanGear00 = true;
-				}
 				else if (gear == GearType::Gear01)
-				{
 					newChar->gearCKRValue = 25;
-				}
 				else if (gear == GearType::Gear02)
-				{
 					newChar->isAttackGainCKR = true;
-				}
 				else if (gear == GearType::Gear03)
-				{
 					newChar->_isCanGear03 = true;
-				}
 				else if (gear == GearType::Gear04)
 				{
 					if (newChar->getTempAttackValue1())
@@ -178,9 +143,7 @@ public:
 					newChar->_sAttackCD3 -= 5;
 				}
 				else if (gear == GearType::Gear06)
-				{
 					newChar->_isCanGear06 = true;
-				}
 				else if (gear == GearType::Gear07)
 				{
 					newChar->gearRecoverValue = 3000;
@@ -196,6 +159,7 @@ public:
 					newChar->hasArmor = true;
 				}
 			}
+
 			newChar->_deadNum = c->_deadNum;
 			newChar->_flogNum = c->_flogNum;
 			newChar->isBaseDanger = c->isBaseDanger;
@@ -203,38 +167,48 @@ public:
 			if (isPlayer)
 			{
 				gameLayer->currentPlayer = newChar;
-				// reset hud layer
 				hudLayer->updateSkillButtons();
 				hudLayer->resetSkillButtons();
-
 				hudLayer->status_hpbar->setOpacity(255);
 				hudLayer->status_expbar->setOpacity(255);
 				hudLayer->setHPLose(newChar->getHpPercent());
 			}
 			else if (newChar->isCom())
-			{
 				newChar->doAI();
-			}
+
+			c->changeCharId = -1;
 		}
 	}
 
 private:
 	void setRandomHero(CharacterBase *c)
 	{
-		auto index = getIndexByHero(c);
-		if (index == -1)
+		int index = getIndexByHero(c);
+		if (index < 0 || index >= (int)heroVector.size())
 		{
-			CCLOGERROR("Not found hero %s from hero vector", c->getName().c_str());
+			CCLOGERROR("Invalid hero index for %s", c->getName().c_str());
 			return;
 		}
-		c->changeCharId = index;
 
-		auto newChar = getRandomHeroExceptAll(heroVector);
+		// The dead hero is still in heroVector, so it is excluded from selection.
+		const char *newChar = getRandomHeroExceptAllOrNull(heroVector);
+		if (newChar == nullptr)
+		{
+			CCLOGERROR("No available hero for Random Deathmatch");
+			c->changeCharId = -1;
+			c->enableReborn = false;
+			return;
+		}
+
+		c->changeCharId = index;
+		// The previous hero is now free for the next death/respawn.
 		heroVector.at(index) = newChar;
 	}
 
 	inline int getIndexByHero(CharacterBase *c)
 	{
-		return (int)heroVector.size() < c->getCharId() ? -1 : c->getCharId() - 1;
+		if (c->getCharId() == 0 || c->getCharId() > heroVector.size())
+			return -1;
+		return c->getCharId() - 1;
 	}
 };
