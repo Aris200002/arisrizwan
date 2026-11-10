@@ -20,7 +20,7 @@ ns.CharactersLayout = {
     -- {
         _None, 		    'Tobirama',		'Hiruzen', 		'Minato',   --[[ Right ]] 'Jiraiya', 	'Tsunade', 		'Orochimaru',
         'Gaara',		_None,	 		'Kankuro',	 	'Chiyo',    --[[ Right ]] _None,        _None,          _None,
-        'Sasuke', 		'Karin', 		'Suigetsu', 	'Jugo',     --[[ Right ]] 'Kabuto',     _None,          _None,
+        'Sasuke', 		'Karin', 		'Suigetsu', 	'Jugo',     --[[ Right ]] _None,         _None,          _None,
     -- },
     -- Page Three
     -- {
