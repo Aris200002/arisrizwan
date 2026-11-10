@@ -16,7 +16,6 @@ constexpr const char *kHeroList[] = {
 	HeroEnum::Kakashi,
 	HeroEnum::Kakuzu,
 	HeroEnum::Kankuro,
-	HeroEnum::Kabuto,
 	HeroEnum::Karin,
 	HeroEnum::Kiba,
 	HeroEnum::Kimimaro,
