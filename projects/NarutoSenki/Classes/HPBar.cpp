@@ -272,32 +272,6 @@ void HPBar::loseHP(float percent)
 		}
 		else if (_delegate->isPlayerOrCom())
 		{
-			// Kabuto OUGIS1 "Dead Soul Jutsu": _delegate ini mayat yang lagi dikendalikan Kabuto
-			// sebagai rekan sementara. Kalau HP-nya jatuh ke 0 di sini artinya dia dihabisi lawan
-			// SAAT masih dikontrol -- bukan eliminasi sungguhan (cuma mayat), jadi SELURUH kredit
-			// kill di bawah (kill count, report popup, EXP, coin -- baik ke Kabuto MAUPUN ke
-			// attacker yang mukul) dilewati total. Revert balik jadi mayat biasa (grup asal,
-			// _isSuicide=true supaya dead() kasih reborn 3 detik & tidak nambah _deadNum),
-			// beri tahu Kabuto lewat onPuppetReverted() (drop _kbControlledPuppet + unschedule
-			// timeout/leash tick-nya) baru panggil dead() langsung -- skip semua logic di bawah.
-			if (_delegate->_isKabutoPuppet)
-			{
-				auto puppetMaster = _delegate->_kbPuppetMaster;
-
-				if (_delegate->_kbPuppetGroupSwapped)
-					_delegate->changeGroup(); // cuma balik grup kalau tadi memang di-swap (mayat musuh)
-				_delegate->_isKabutoPuppet = false;
-				_delegate->_kbPuppetGroupSwapped = false;
-				_delegate->_kbPuppetMaster = nullptr;
-				_delegate->_isSuicide = true;
-
-				if (puppetMaster)
-					puppetMaster->onPuppetReverted(_delegate);
-
-				_delegate->dead();
-				return;
-			}
-
 			if (_delegate->getName() == HeroEnum::Kakuzu && getGameLayer()->_isOugis2Game)
 			{
 				bool reieveAble = false;
@@ -361,11 +335,8 @@ void HPBar::loseHP(float percent)
 				}
 			}
 
-			// GUARD (sama pola dgn fix di Ino.hpp / GameOver.cpp): _isControlled/_controller
-			// dipakai BERSAMA oleh Shintenshin (possession asli Ino, revive 3s + kredit kill
-			// memang harus ke Ino) DAN stun-lock kosmetik Kabuto (kb_ult_hit skill05,
-			// kb_feather_hit) yang TIDAK boleh dianggap possession-death. Hanya masuk cabang
-			// revive+redirect-kredit kalau controller-nya benar Ino.
+			// GUARD (sama pola dgn fix di Ino.hpp / GameOver.cpp): hanya masuk cabang
+			// revive+redirect-kredit kalau controller-nya benar Ino (Shintenshin).
 			if (_delegate->_isControlled && _delegate->getController() &&
 				_delegate->getController()->getName() == HeroEnum::Ino)
 			{
@@ -397,14 +368,6 @@ void HPBar::loseHP(float percent)
 				else
 					currentSlayer = _slayer;
 			}
-
-			// Kabuto "Dead Soul Jutsu": kill ini dilakukan OLEH mayat yang sedang dikendalikan
-			// Kabuto (_isKabutoPuppet), bukan atas nama mayat itu sendiri -- redirect SELURUH
-			// kredit (killNum, report popup, EXP, coin di bawah) ke _kbPuppetMaster selama window
-			// kontrol masih aktif. Guard null-check _kbPuppetMaster karena _isKabutoPuppet bisa
-			// saja masih true sesaat sebelum jalur revert lain sempat null-kan pointer ini.
-			if (currentSlayer->_isKabutoPuppet && currentSlayer->_kbPuppetMaster)
-				currentSlayer = currentSlayer->_kbPuppetMaster;
 
 			if (currentSlayer->getName() == HeroEnum::Kakuzu)
 			{

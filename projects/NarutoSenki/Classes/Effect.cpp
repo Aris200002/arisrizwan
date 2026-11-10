@@ -19,13 +19,9 @@ bool Effect::init(const string &name, CharacterBase *attacker)
 	};
 
 	// hit effects
-	// NOTE: Kabuto custom attackType strings (ns_hit, m_hit, kb_scalpel_hit, kb_ult_hit,
-	// kb_feather_hit) are reused as setAttackBox()/_effectType keys. They must be registered
-	// here or Effect::create() returns nullptr and damageEffectBatch->addChild(nullptr) crashes
-	// (skill01/skill02/skill03/OUGIS2 whenever the attack actually connects).
-	static const std::unordered_set<string> kHitMinor = {"n_hit", "b_hit", "ns_hit", "kb_scalpel_hit", "kb_feather_hit"};
+	static const std::unordered_set<string> kHitMinor = {"n_hit", "b_hit", "ns_hit"};
 	static const std::unordered_set<string> kHitMajor = {"l_hit", "f_hit", "f2_hit", "c_hit", "o_hit", "o2_hit", "ob_hit", "ab_hit", "ac_hit", "ct_hit", "ts_hit", "s_hit", "m_hit"};
-	static const std::unordered_set<string> kHitBlue = {"bl_hit", "bc_hit", "bf_hit", "sl_hit", "kb_ult_hit"};
+	static const std::unordered_set<string> kHitBlue = {"bl_hit", "bc_hit", "bf_hit", "sl_hit"};
 
 	if (kHitMinor.count(name) > 0)
 	{
@@ -74,12 +70,6 @@ bool Effect::init(const string &name, CharacterBase *attacker)
 		{"jdBuff", [&]() { runAnim("jdBuff_Effect_", 8, 10, true); setAnchorPoint(Vec2(0.5f, 0)); }},
 		{"bmBuff", [&]() { runAnim("bmBuff_Effect_", 8, 10, true); setAnchorPoint(Vec2(0.5f, 0)); }},
 		{"dhBuff", [&]() { for (int i = 0; i < 3; i++) { auto ef = Sprite::createWithSpriteFrameName("FireEffect_01"); ef->setAnchorPoint(Vec2(0.5f, 0)); ef->setPosition(i == 0 ? Vec2(10, 0) : (i == 1 ? Vec2(-10, 18) : Vec2(10, 34))); ef->runAction(createEffectAnimation("FireEffect_", 4, 10, true)); addChild(ef); } }},
-		// Kabuto OUGIS2 (Nehan Shojo) feather stun visual. Reuses the 3 existing
-		// Kabuto_Feathers_01..03 frames (already bundled in Kabuto.plist) but LOOPS them
-		// (isLoop=true) instead of the one-shot 0.5s the old world-space Bullet used --
-		// this is what stays attached above the victim's head for the entire stun duration
-		// (see CharacterBase::setDamage() kb_feather_hit branch / _kbFeatherStunEffect).
-		{"kbFeather", [&]() { runAnim("Kabuto_Feathers_", 3, 8, true); setAnchorPoint(Vec2(0.5f, 0)); setPosition(Vec2(0, at->getContentSize().height)); }},
 	};
 
 	// special aliases mapped before fallback

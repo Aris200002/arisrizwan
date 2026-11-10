@@ -71,54 +71,6 @@ public:
 	uint32_t			_skillUPBuffValue;
 	uint32_t			_skillChangeBuffValue;
 
-	// --- Kabuto passive (Yin Healing Focus) state, generic per-instance ---
-	float				_kbIdleTimer;         // detik sejak terakhir kena damage, di-tick 0.1s
-	bool				_kbYinReady;          // true kalau sudah siaga >=5 detik tanpa damage
-	bool				_kbYinDmgBuffActive;  // window +12% dmg 3 detik setelah heal proc (passive)
-
-	// SKILL1 "Chakra Scalpel Activation": selain extra magic dmg (kb_scalpel_hit, NAttack saja)
-	// + self-heal + refund CKR, window 6 detik SKILL1 sekarang juga menaikkan damage SEMUA
-	// serangan Kabuto (NAttack maupun skill lain: SKILL2/SKILL3/OUGIS1 puppet.../OUGIS2) sebesar
-	// kKbScalpelDmgBuffPercent -- late-game scaling supaya SKILL1 tetap relevan dipakai walau
-	// target sudah lolos dari damage flat 4% maxHP-nya. Di-set true di Kabuto::changeAction(),
-	// di-reset false di Kabuto::resumeAction() saat window 6 detik habis.
-	bool				_kbScalpelDmgBuffActive;
-
-	// --- Kabuto OUGIS1 (Dead Soul Army) clone spawn-position override, generic ---
-	// Diisi dari Kabuto::trySpawnDeadSoulArmyClone() SEBELUM finalizeClone(), dibaca+dikonsumsi
-	// sekali oleh CharacterBase::finalizeClone() tepat setelah baris default
-	// "clone->setPosition(±32px dari master)" supaya clone-nya muncul di titik mayat yang
-	// mentrigger-nya, bukan di sebelah Kabuto. Nama generic (bukan kbClone-spesifik-di-luar-
-	// Kabuto) karena field ini dibaca dari fungsi generik CharacterBase::finalizeClone(), pola
-	// sama seperti _kbYinReady dkk yang juga "milik" Kabuto tapi harus tinggal di CharacterBase.
-	Vec2				_kbCloneSpawnPos;
-	bool				_kbCloneSpawnPosOverride;
-	// Sisa dari skema baseline-clone lama (2x <e type="setClone"> unconditional di skill04, sudah
-	// dihapus -- lihat Kabuto.xml/Kabuto.hpp). Dead Soul Army sekarang selalu 1 clone dengan posisi
-	// di-override lewat _kbCloneSpawnPos di atas, jadi cabang di finalizeClone() yang memakai
-	// toggle ini praktis tidak lagi kepakai dari alur normal -- dibiarkan untuk kompatibilitas
-	// jalur fallback CharacterBase::setClone()/Kabuto::createClone().
-	bool				_kbCloneSideToggle;
-
-	// --- Kabuto OUGIS1 "Dead Soul Jutsu" possession state, generic per-instance ---
-	// _isKabutoPuppet == true selama unit INI (bukan clone baru -- unit Hero asli yang tadinya
-	// State::DEAD) sedang dihidupkan+dikendalikan Kabuto sebagai rekan sementara. Dipakai
-	// HPBar::loseHP() utk membungkam SELURUH kredit kill (baik ke Kabuto maupun ke attacker)
-	// saat unit ini "mati" lagi -- baik lewat revert terjadwal (timeout/keluar jangkauan
-	// Kabuto) MAUPUN lewat damage musuh -- karena secara lore ini cuma mayat yang dikendalikan,
-	// bukan eliminasi sungguhan. _kbPuppetMaster nunjuk balik ke Kabuto yang mengendalikan
-	// (dipakai buat manggil onPuppetReverted() hook-nya saat puppet mati lagi lewat damage,
-	// pola sama seperti _master->onCloneDealloc() di Hero::dealloc()).
-	bool				_isKabutoPuppet;
-	CharacterBase*		_kbPuppetMaster;
-	// True hanya kalau mayat yang direvive tadinya MUSUH Kabuto (jadi changeGroup() dipanggil
-	// saat revive utk menjadikannya rekan sementara). Kalau mayat itu tadinya REKAN SETIM
-	// Kabuto sendiri, changeGroup() TIDAK pernah dipanggil (dia dihidupkan apa adanya, tetap di
-	// grup asalnya -- bug lama: dulu changeGroup() dipanggil UNCONDITIONAL, jadi rekan setim
-	// yang dihidupkan malah ke-flip jadi musuh). Field ini dibaca saat revert (timeout/leash-
-	// putus/dibunuh lawan) supaya changeGroup() cuma dipanggil BALIK kalau memang tadi di-swap.
-	bool				_kbPuppetGroupSwapped;
-
 	Sprite*				_heartEffect;
 	Effect*				_healBuffEffect;
 	Effect*				_powerBuffEffect;
@@ -126,15 +78,6 @@ public:
 	Sprite*				_dehealBuffEffect;
 	Effect*				_healItemEffect;
 	Effect*				_speedItemEffect;
-	// Nehan Shojo feathers (Kabuto OUGIS2 AoE): persistent stun-visual attached as a CHILD of
-	// THIS (the victim), same addChild-on-target pattern as Karin's _healBuffEffect (hBuff) —
-	// except Karin attaches to an ally, this attaches to whoever got hit by the feather (enemy
-	// from Kabuto's POV). Lives exactly as long as the stun (CharacterBase::setDamage() kb_feather_hit
-	// branch creates it, CharacterBase::kabutoFeatherReleaseStun() removes it) instead of the old
-	// fixed 0.5s world-space Bullet lifetime, which is also what used to leave _controller/_slayer
-	// dangling once the transient feather Bullet self-destructed mid-stun (see patch notes in
-	// CharacterBase.cpp setDamage() kb_feather_hit branch).
-	Effect*				_kbFeatherStunEffect;
 	float				_buffStartTime;
 	float				_debuffStartTime;
 	VPROP(int, _knockLength, KnockLength);
@@ -331,7 +274,7 @@ public:
 
 	void				idle();
 	void				walk(Vec2 direction);
-	virtual void		attack(ABType type); // virtual: Kabuto overrides for OUGIS1 corpse-scan guard (needed since currentPlayer is CharacterBase*)
+	virtual void		attack(ABType type);
 	void				sAttack(ABType type);
 	void				nAttack();
 	void				oAttack(ABType type);
@@ -426,15 +369,8 @@ public:
 	// that clone from _CharacterArray and removeFromParent()'s it. Default no-op; override
 	// this instead of caching+dereferencing a raw CharacterBase* to a clone, which can dangle
 	// once the clone is actually freed (std::vector<Hero*> _CharacterArray does not retain --
-	// e.g. Kabuto::_kbActiveCloneRef, fixed via this hook).
+	// see Hero::dealloc()).
 	virtual void		onCloneDealloc(CharacterBase *clone) {}
-	// Hook fired on a Kabuto puppet's _kbPuppetMaster right before HPBar::loseHP()'s
-	// Kabuto-puppet bypass calls puppet->dead() (i.e. puppet got finished off by enemy damage
-	// while still under control, or reverted via master's own timeout/leash-range check).
-	// Default no-op; lets the master (e.g. Kabuto::_kbControlledPuppet) drop its own raw
-	// pointer + unschedule its timeout/range-check ticks instead of dereferencing a puppet
-	// that's about to go through the normal 3s-reborn cycle as an ordinary corpse again.
-	virtual void		onPuppetReverted(CharacterBase *puppet) {}
 	// Base-tower defense system: default false (regular towers/every other role always
 	// damageable). Tower overrides this to shield the Center tower while at least one
 	// non-Center tower of its own group still stands (see Tower::isTowerInvincible()) --
@@ -492,7 +428,7 @@ public:
 	void				setClone(int cloneTime);
 	// Shared finish-up step for a clone Hero* already produced by createClone(): position,
 	// stat copy, HP bar, add to _CharacterArray, doAI(), and (conditionally) the lifetime timer.
-	// Exposed so subclasses (Kabuto) can spawn extra clones outside the fixed <e type="setClone">
+	// Exposed so subclasses can spawn extra clones outside the fixed <e type="setClone">
 	// event count in their action XML (e.g. one clone per nearby corpse) while reusing all the
 	// same setup rules setClone() already uses. cloneTime<=0 means "no forced timeout" (see body).
 	Hero*				finalizeClone(Hero *clone, int cloneTime);
@@ -510,11 +446,6 @@ public:
 	void				removeBuffEffect(const string &type);
 
 	void				disableBuff(float dt);
-	void				kabutoPassiveTick(float dt);            // schedule 0.1f, mirror pola doAI/setAI
-	void				restoreWalkSpeed(float dt);             // generic: setWalkSpeed(_originSpeed), dipakai slow SKILL2
-	void				kabutoReleaseStun(float dt);            // lepas CC dari OUGIS2 (finisher kb_ult_hit)
-	void				kabutoFeatherReleaseStun(float dt);     // lepas stun bulu (kb_feather_hit) -> lanjut slow
-	void				kabutoEndYinDmgBuffWindow(float dt);    // tutup window +12% dmg passive setelah 3 detik
 
 	void				healBuff(float dt);
 	void				dehealBuff(float dt);

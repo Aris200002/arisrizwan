@@ -120,16 +120,6 @@ CharacterBase::CharacterBase()
 	_healBuffValue = 0;
 	_skillUPBuffValue = 0;
 	_skillChangeBuffValue = 0;
-	_kbIdleTimer = 0.0f;
-	_kbYinReady = false;
-	_kbYinDmgBuffActive = false;
-	_kbScalpelDmgBuffActive = false;
-	_kbCloneSpawnPosOverride = false;
-	_kbCloneSideToggle = false;
-	_isKabutoPuppet = false;
-	_kbPuppetMaster = nullptr;
-	_kbPuppetGroupSwapped = false;
-	_kbFeatherStunEffect = nullptr;
 	_dehealBuffValue = 0;
 	_powerUPBuffValue = 0;
 	_hpBar = nullptr;
@@ -1295,45 +1285,8 @@ void CharacterBase::setDamage(CharacterBase *attacker, const string &effectType,
 		onTowerDamaged();
 	}
 
-	if (attacker->getName() == HeroEnum::Kabuto && attacker->_kbYinDmgBuffActive)
-	{
-		// Late-game buff: pasif Yin Healing Focus dinaikkan dari +8% -> +12% dmg selama window
-		// 3 detiknya supaya proc pasif ini tetap terasa berdampak walau target ber-DEF tinggi.
-		attackValue = attackValue * 112 / 100;
-	}
-
-	if (attacker->getName() == HeroEnum::Kabuto && attacker->_kbScalpelDmgBuffActive)
-	{
-		// Late-game buff: SKILL1 (Chakra Scalpel Activation) sekarang juga menaikkan damage
-		// SEMUA serangan Kabuto (bukan cuma NAttack ber-tag kb_scalpel_hit) sebesar +12% selama
-		// window 6 detiknya, supaya SKILL1 layak dipakai sebagai damage-amp sebelum trade/skill
-		// combo di late game, bukan cuma sumber sustain/refund CKR semata. Stack additive dengan
-		// buff Yin di atas kalau kebetulan keduanya aktif bersamaan.
-		attackValue = attackValue * 112 / 100;
-	}
-
 	int criticalValue;
 	uint32_t realValue;
-
-	if (getName() == HeroEnum::Kabuto && _kbYinReady && _state != State::DEAD)
-	{
-		_kbYinReady = false;
-		_kbIdleTimer = 0.0f;
-
-		uint32_t healValue = getMaxHP() * 25 / 100;
-		increaseHpAndUpdateUI(healValue);
-
-		// FIX (bug laporan #5 tambahan): passive Yin Healing Focus sebelumnya proc TANPA
-		// feedback visual/suara sama sekali (beda dari semua skill aktif Kabuto lain yang
-		// selalu punya setSkillEffect/setSound), jadi player tidak pernah bisa lihat/dengar
-		// kapan pasif ini aktif walau HP-nya sebenarnya sudah bertambah. "hp_restore" adalah
-		// effect heal generic yang sudah terdaftar di Effect.cpp (dipakai skill heal lain).
-		setSkillEffect("hp_restore");
-
-		_kbYinDmgBuffActive = true;
-		unschedule(schedule_selector(CharacterBase::kabutoEndYinDmgBuffWindow));
-		scheduleOnce(schedule_selector(CharacterBase::kabutoEndYinDmgBuffWindow), 3.0f);
-	}
 
 	CharacterBase *currentAttacker;
 	if (attacker->_master)
@@ -1342,8 +1295,8 @@ void CharacterBase::setDamage(CharacterBase *attacker, const string &effectType,
 		currentAttacker = attacker;
 
 	// FIX (bug: hasil pertandingan ter-skip / langsung balik ke menu): _slayer dulu diisi
-	// `attacker` mentah -- untuk serangan berbasis proyektil (mis. KabutoFeather, ~0.5 detik
-	// lifetime) itu objek Bullet transient, BUKAN karakter pembunuh sebenarnya. Kalau korban
+	// `attacker` mentah -- untuk serangan berbasis proyektil (mis. peluru berumur
+	// pendek) itu objek Bullet transient, BUKAN karakter pembunuh sebenarnya. Kalau korban
 	// mati setelah proyektilnya di-dealloc, HPBar::_delegate->_slayer jadi dangling -> kill
 	// credit (setKillNum) tidak nyampe ke karakter yang benar di _CharacterArray, sedangkan
 	// getGameLayer()->getTotalKills() (counter global) tetap naik terus. Selisih itu yang
@@ -1359,11 +1312,6 @@ void CharacterBase::setDamage(CharacterBase *attacker, const string &effectType,
 
 	if (attacker->getName() == HeroEnum::Hidan && attacker->_skillChangeBuffValue)
 	{
-		realValue = attackValue + criticalValue;
-	}
-	else if (attacker->getName() == HeroEnum::Kabuto && attacker->_attackType == "kb_ult_hit")
-	{
-		// Nehan Shojo: Final Slash (OUGIS2) — true damage, abaikan DEF & semua decreaseRating
 		realValue = attackValue + criticalValue;
 	}
 	else
@@ -1425,86 +1373,6 @@ void CharacterBase::setDamage(CharacterBase *attacker, const string &effectType,
 	Debug::PrintDamgeInfo(this, attacker, currentAttacker, attackValue, realValue, effectType);
 #endif
 	setHPValue(getHP() <= realValue ? 0 : getHP() - realValue);
-
-	// --- SKILL1 (Chakra Scalpel) lifesteal + extra magic dmg ke korban ---
-	if (attacker->getName() == HeroEnum::Kabuto && attacker->_attackType == "kb_scalpel_hit")
-	{
-		uint32_t bonusMagic = getMaxHP() * 4 / 100;           // 4% Max HP korban, magic dmg tambahan
-		setHPValue(getHP() <= bonusMagic ? 0 : getHP() - bonusMagic);
-
-		uint32_t selfHeal = attacker->getMaxHP() * 15 / 1000; // 1.5% Max HP attacker
-		attacker->increaseHpAndUpdateUI(selfHeal);
-	}
-
-	// --- SKILL2 (Nerve Strike Dash): slow korban 30% selama 1.5 detik ---
-	if (attacker->getName() == HeroEnum::Kabuto && attacker->_attackType == "ns_hit")
-	{
-		setWalkSpeed(_originSpeed * 70 / 100);
-		unschedule(schedule_selector(CharacterBase::restoreWalkSpeed));
-		scheduleOnce(schedule_selector(CharacterBase::restoreWalkSpeed), 1.5f);
-	}
-
-	// --- OUGIS2 (Nehan Shojo): paralyze/stun 4 detik ---
-	if (attacker->getName() == HeroEnum::Kabuto && attacker->_attackType == "kb_ult_hit")
-	{
-		_isControlled = true;
-		_controller = attacker;
-		setWalkSpeed(0);
-		unschedule(schedule_selector(CharacterBase::kabutoReleaseStun));
-		scheduleOnce(schedule_selector(CharacterBase::kabutoReleaseStun), 4.0f);
-
-		// Sama seperti kb_feather_hit di bawah: kb_ult_hit juga tidak pernah lewat cabang
-		// hitType di onHit() yang biasa memicu hurt()/hardHurt(), jadi animasi korban tetap
-		// jalan terus menembus stun-nya sendiri kalau tidak dipaksa di sini.
-		hardHurt(1000, true, false, false, true);
-	}
-
-	// --- OUGIS2 bulu Nehan Shojo (AoE splash per musuh, lihat Kabuto::spawnNehanShoujoFeathers):
-	//     stun penuh 1.5 detik dulu, LALU otomatis lanjut slow 60% speed 2 detik setelah stun
-	//     lepas (chain di kabutoFeatherReleaseStun(), §3) -- beda flag scheduling dari finisher
-	//     kb_ult_hit di atas (kabutoReleaseStun) supaya kalau _mainTarget kena KEDUANYA (bulu +
-	//     slash finisher) durasi CC-nya tidak saling menimpa aneh, cuma yang terakhir jalan
-	//     yang menang (pola unschedule-lalu-scheduleOnce standar codebase ini). ---
-	if (attacker->getName() == HeroEnum::Kabuto && attacker->_attackType == "kb_feather_hit")
-	{
-		_isControlled = true;
-		// FIX (force close saat mau nampilin hasil pertandingan): dulu `_controller = attacker;`
-		// nunjuk ke objek Bullet (KabutoFeather) yang cuma hidup ~0.5 detik lalu di-
-		// removeFromParent()-in, padahal stun-nya sendiri jalan 1.5 detik -- jadi ada window
-		// ~1 detik di mana _controller adalah dangling pointer ke Bullet yang sudah dealloc.
-		// Kalau korban mati di window itu, CharacterBase::dead() baca `_controller->getName()`
-		// (use-after-free) -> UB yang paling sering nongol pas ada lonjakan alokasi besar
-		// (snapshot render + push scene GameOver), persis gejala yang dilaporkan. Semua
-		// _controller lain di codebase ini (lihat cabang Shintenshin di atas, ~line 497)
-		// selalu nunjuk ke karakter PERSISTEN (attacker->_master), bukan proyektil transient --
-		// disamakan di sini.
-		_controller = attacker->_master ? attacker->_master : attacker;
-		setWalkSpeed(0);
-		unschedule(schedule_selector(CharacterBase::kabutoReleaseStun));
-		unschedule(schedule_selector(CharacterBase::kabutoFeatherReleaseStun));
-		scheduleOnce(schedule_selector(CharacterBase::kabutoFeatherReleaseStun), 1.5f);
-
-		// Persistent stun visual: attach as a CHILD of the victim (this), same addChild-on-target
-		// pattern as Karin's heal buff (_healBuffEffect / "hBuff" in Effect::init()), except here
-		// it's on whoever got hit rather than an ally -- so it moves with the victim and stays
-		// visible for the WHOLE stun window instead of vanishing after the old 0.5s Bullet
-		// lifetime (bug laporan: "efek dari feathers tetap tidak muncul... yang harusnya selama
-		// durasi stun itu tetap ada"). Removed in kabutoFeatherReleaseStun() below.
-		if (_kbFeatherStunEffect)
-		{
-			_kbFeatherStunEffect->removeFromParent();
-			_kbFeatherStunEffect = nullptr;
-		}
-		_kbFeatherStunEffect = Effect::create("kbFeather", this);
-		if (_kbFeatherStunEffect)
-			addChild(_kbFeatherStunEffect, 999);
-
-		// Force the Hurt reaction immediately: Bullet hits (see onHit()'s attacker->isBullet()
-		// branch) never call hurt()/hardHurt() by default, which is why the victim's current
-		// animation kept playing straight through the stun instead of being interrupted (bug
-		// laporan: "animasi ketika lawan terkena stun justru tetap berjalan").
-		hardHurt(1000, true, false, false, true);
-	}
 
 	if (isClone() && _master && !_master->_isControlled)
 	{
@@ -2381,8 +2249,8 @@ void CharacterBase::setBuff(int buffValue)
 		_skillChangeBuffValue = buffValue;
 
 		if (getName() == HeroEnum::Shino ||
+		    getName() == HeroEnum::Sakura ||
 			getName() == HeroEnum::Sai ||
-			getName() == HeroEnum::Sakura ||
 			getName() == HeroEnum::Deidara)
 		{
 			if (_skillChangeBuffValue == 17)
@@ -2632,51 +2500,6 @@ void CharacterBase::disableDebuff(float dt)
 
 	if (getWalkSpeed() == 112)
 		setWalkSpeed(224);
-}
-
-void CharacterBase::restoreWalkSpeed(float dt)
-{
-	setWalkSpeed(_originSpeed);
-}
-
-void CharacterBase::kabutoReleaseStun(float dt)
-{
-	_isControlled = false;
-	_controller = nullptr;
-	setWalkSpeed(_originSpeed);
-}
-
-void CharacterBase::kabutoFeatherReleaseStun(float dt)
-{
-	_isControlled = false;
-	_controller = nullptr;
-	setWalkSpeed(_originSpeed * 60 / 100); // lepas stun bulu, lanjut slow 60% speed
-	unschedule(schedule_selector(CharacterBase::restoreWalkSpeed));
-	scheduleOnce(schedule_selector(CharacterBase::restoreWalkSpeed), 2.0f);
-
-	if (_kbFeatherStunEffect)
-	{
-		_kbFeatherStunEffect->removeFromParent();
-		_kbFeatherStunEffect = nullptr;
-	}
-}
-
-void CharacterBase::kabutoPassiveTick(float dt)
-{
-	if (getName() != HeroEnum::Kabuto || _state == State::DEAD)
-		return;
-
-	_kbIdleTimer += dt;
-	if (_kbIdleTimer >= 5.0f)
-	{
-		_kbYinReady = true;
-		_kbIdleTimer = 5.0f; // cap, jangan overflow terus kalau idle lama tanpa kena hit
-	}
-}
-
-void CharacterBase::kabutoEndYinDmgBuffWindow(float dt)
-{
-	_kbYinDmgBuffActive = false;
 }
 
 void CharacterBase::healBuff(float dt)
@@ -3108,43 +2931,8 @@ Hero *CharacterBase::finalizeClone(Hero *clone, int cloneTime)
 		clone->setMaster(this);
 	}
 
-	if (getName() == HeroEnum::Kabuto && _kbCloneSpawnPosOverride)
-	{
-		// Dead Soul Army: posisi tepat di titik mayat yang mentrigger-nya, lihat
-		// Kabuto::trySpawnDeadSoulArmyClone().
-		clone->setPosition(_kbCloneSpawnPos);
-		_kbCloneSpawnPosOverride = false;
-	}
-	else if (getName() == HeroEnum::Kabuto)
-	{
-		// Fallback path (kompatibilitas): hanya kepakai kalau ada jalur lain yang manggil
-		// CharacterBase::setClone()/Kabuto::createClone() di luar
-		// Kabuto::trySpawnDeadSoulArmyClone() (yang SELALU set _kbCloneSpawnPosOverride di
-		// atas). Alur normal Dead Soul Army sekarang tidak pernah lewat sini lagi.
-		float side = _kbCloneSideToggle ? -32.0f : 32.0f;
-		clone->setPosition(Vec2(getPositionX() + (_isFlipped ? -side : side), getPositionY() - 1));
-		_kbCloneSideToggle = !_kbCloneSideToggle;
-	}
-	else
-	{
-		clone->setPosition(Vec2(getPositionX() + (_isFlipped ? -32 : 32), getPositionY() - 1));
-	}
+	clone->setPosition(Vec2(getPositionX() + (_isFlipped ? -32 : 32), getPositionY() - 1));
 
-	if (getName() == HeroEnum::Kabuto)
-	{
-		// NERF (bug laporan #4): clone dulu overpower karena finalizeClone() selalu menimpa
-		// balik HP/ATK/DEF clone ke 100% stat Kabuto, padahal Kabuto::createClone() sudah coba
-		// nerf attack duluan -- override race, hasil akhirnya clone tetap full power. Sekarang
-		// HP/ATK/DEF clone Kabuto (baseline maupun corpse) dikunci 50% dari stat Kabuto ASLI
-		// saat ini, sesuai spek biar gameplay seimbang.
-		clone->setHPValue(getMaxHP() * 50 / 100, false);
-		clone->setMaxHPValue(getMaxHP() * 50 / 100, false);
-		clone->_exp = _exp;
-		clone->setNAttackValue(getNAttackValue() * 50 / 100);
-		clone->_defense = _defense * 50 / 100;
-		clone->_level = _level;
-	}
-	else
 	{
 		if ((getName() == HeroEnum::SageNaruto || getName() == HeroEnum::Naruto) ||
 			(getName() == HeroEnum::RikudoNaruto && cloneTime == 10))
@@ -3196,12 +2984,7 @@ Hero *CharacterBase::finalizeClone(Hero *clone, int cloneTime)
 	getGameLayer()->addChild(clone, -clone->getPositionY());
 	clone->doAI();
 
-	// Kabuto's "Dead Soul Army" decoys are spec'd to last until their HP bar is empty (normal
-	// combat death), not vanish on an arbitrary countdown -- so skip the forced timeout for them
-	// regardless of the cloneTime passed in the action XML. Every other clone-capable hero keeps
-	// the original timed-despawn behavior.
-	if (cloneTime > 0 && getName() != HeroEnum::Kabuto &&
-    getName() != HeroEnum::Kankuro)
+	if (cloneTime > 0 && getName() != HeroEnum::Kankuro)
 	{
 		clone->scheduleOnce(schedule_selector(Hero::removeClone), cloneTime);
 	}
@@ -4642,16 +4425,8 @@ void CharacterBase::dead()
 		_isControlled = false;
 
 		// FIX: Shintenshin-only mind-control cleanup (group swap + Ino body restore) harus
-		// cuma jalan kalau _controller memang Ino (possession asli). Sebelumnya block ini
-		// (termasuk changeGroup()) jalan untuk SIAPA SAJA yang meninggalkan _isControlled==true,
-		// termasuk korban stun Kabuto (kb_ult_hit/kb_feather_hit di CharacterBase::setDamage()
-		// pakai _isControlled/_controller yang SAMA cuma buat freeze/lock, bukan possession) --
-		// akibatnya musuh yang mati/eliminated saat masih under Kabuto-stun ikut di-changeGroup()
-		// jadi rekan Kabuto secara permanen (bug laporan #1). Selain itu, `_controller->_state`
-		// di bawah dereference _controller TANPA null-check -- kalau _controller itu Kabuto yang
-		// objectnya sudah di-dealloc duluan (mis. saat match berakhir/cleanup), ini use-after-free
-		// -> force close saat kembali ke menu (bug laporan #5). Guard by Ino menghilangkan kedua
-		// bug ini sekaligus tanpa mengubah perilaku Shintenshin asli.
+		// cuma jalan kalau _controller memang Ino (possession asli), dan _controller
+		// dicek null dulu sebelum di-dereference.
 		if (_controller && _controller->getName() == HeroEnum::Ino)
 		{
 			if (_controller->isPlayer())
@@ -4756,16 +4531,6 @@ void CharacterBase::dead()
 	{
 		_hpBar->removeFromParent();
 		_hpBar = nullptr;
-	}
-
-	// Clear out before the death sequence removes this node's children out from under us --
-	// otherwise the still-scheduled CharacterBase::kabutoFeatherReleaseStun() would later call
-	// ->removeFromParent() on an already-gone child (same dangling-pointer class of bug as the
-	// _controller fix above, just for the feather's persistent visual instead of the projectile).
-	if (_kbFeatherStunEffect)
-	{
-		_kbFeatherStunEffect->removeFromParent();
-		_kbFeatherStunEffect = nullptr;
 	}
 
 	if (hearts < 1)

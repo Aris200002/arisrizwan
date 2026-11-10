@@ -309,7 +309,6 @@ void LoadLayer::setLoadingAnimation(const char *player, int index)
 
 	// FIXME: Use the other way get animation frame count
 	ssize_t frameCount = is_same(player, HeroEnum::Konan) ? 1
-		: is_same(player, HeroEnum::Kabuto) ? 4
 		: 7;
 	Vector<SpriteFrame *> animeFrames(frameCount);
 	for (int i = 1; i < frameCount; i++)
