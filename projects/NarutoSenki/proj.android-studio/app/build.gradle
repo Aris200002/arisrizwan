@@ -19,7 +19,9 @@ android {
         externalNativeBuild {
             if (PROP_BUILD_TYPE == 'ndk-build') {
                 ndkBuild {
-                    targets 'cocos2dcpp_shared'
+
+                    // Jangan menentukan targets secara manual.
+                    // Biarkan NDK membaca target dari Android.mk.
 
                     arguments '-j' + Runtime.runtime.availableProcessors()
 
@@ -47,7 +49,9 @@ android {
 
         ndk {
             abiFilters.addAll(
-                PROP_APP_ABI.split(':').collect { it as String }
+                PROP_APP_ABI.split(':').collect {
+                    it as String
+                }
             )
         }
     }
@@ -120,6 +124,10 @@ dependencies {
 
     implementation project(':libcocos2dx')
 }
+
+// ==========================================
+// ASSET MANAGEMENT
+// ==========================================
 
 task cleanAssets(type: Delete) {
     delete 'assets'
