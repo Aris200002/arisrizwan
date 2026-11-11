@@ -2,6 +2,7 @@ name: build-debug
 
 on:
   workflow_dispatch:
+
   push:
     branches: [ main ]
     paths:
@@ -18,10 +19,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ==========================================
+      # 1. CHECKOUT REPOSITORY
+      # ==========================================
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Java 17 diperlukan oleh AGP 8.9.2
+      # ==========================================
+      # 2. INSTALL JAVA 17
+      # ==========================================
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -29,11 +35,15 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      # Android SDK
+      # ==========================================
+      # 3. SETUP ANDROID SDK
+      # ==========================================
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
-      # SDK 36 dan NDK 28.2
+      # ==========================================
+      # 4. INSTALL SDK, BUILD TOOLS, AND NDK
+      # ==========================================
       - name: Install Android SDK and NDK
         run: |
           yes | sdkmanager --licenses > /dev/null || true
@@ -44,50 +54,79 @@ jobs:
             "platform-tools" \
             "ndk;28.2.13676358"
 
-      # Konfigurasi SDK
+      # ==========================================
+      # 5. CONFIGURE ANDROID SDK
+      # ==========================================
       - name: Configure Android SDK
         working-directory: projects/NarutoSenki/proj.android-studio
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-      # Pastikan Java tidak berubah ke Java 8
+      # ==========================================
+      # 6. GRANT EXECUTE PERMISSION
+      # ==========================================
+      - name: Grant execute permission
+        working-directory: projects/NarutoSenki/proj.android-studio
+        run: |
+          chmod +x gradlew
+
+      # ==========================================
+      # 7. VERIFY JAVA AND GRADLE
+      # ==========================================
       - name: Verify Java and Gradle
         working-directory: projects/NarutoSenki/proj.android-studio
         run: |
+          echo "========== JAVA VERSION =========="
           java -version
-          echo "JAVA_HOME=$JAVA_HOME"
+
+          echo "========== JAVA HOME =========="
+          echo "$JAVA_HOME"
+
+          echo "========== GRADLE VERSION =========="
           ./gradlew --version
 
-      # Izin menjalankan Gradle
-      - name: Grant execute permission
-        working-directory: projects/NarutoSenki/proj.android-studio
-        run: chmod +x gradlew
-
-      # Build APK
+      # ==========================================
+      # 8. BUILD DEBUG APK
+      # ==========================================
       - name: Build Debug APK
         working-directory: projects/NarutoSenki/proj.android-studio
         run: |
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug \
+            --stacktrace \
+            --info \
+            --no-daemon
 
-      # Cari APK
+      # ==========================================
+      # 9. LOCATE APK
+      # ==========================================
       - name: Locate APK
         if: always()
-        run: find . -name "*.apk"
+        run: |
+          echo "========== APK FILES =========="
+          find . -type f -name "*.apk"
 
-      # Upload APK
+      # ==========================================
+      # 10. UPLOAD APK
+      # ==========================================
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: narutosenki-test-apk
-          path: '**/*.apk'
+          path: |
+            projects/NarutoSenki/proj.android-studio/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
 
-      # Upload log jika gagal
+      # ==========================================
+      # 11. UPLOAD BUILD LOGS IF FAILED
+      # ==========================================
       - name: Upload build logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs
+          name: narutosenki-build-logs
           path: |
             projects/NarutoSenki/proj.android-studio/app/build/outputs/logs/**
-            projects/NarutoSenki/proj.android-studio/**/build.log
+            projects/NarutoSenki/proj.android-studio/app/build/reports/**
+            projects/NarutoSenki/proj.android-studio/build/reports/**
+          if-no-files-found: warn
