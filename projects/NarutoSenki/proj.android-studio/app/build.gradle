@@ -19,7 +19,7 @@ android {
         externalNativeBuild {
             if (PROP_BUILD_TYPE == 'ndk-build') {
                 ndkBuild {
-                    targets 'cocos2dcpp'
+                    targets 'cocos2dcpp_shared'
 
                     arguments '-j' + Runtime.runtime.availableProcessors()
 
