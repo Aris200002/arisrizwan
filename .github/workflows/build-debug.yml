@@ -16,58 +16,65 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # cmdline-tools 12.x (pulled by android-actions/setup-android@v3) requires
-      # JDK 17+ to run sdkmanager itself. Use JDK 17 here only for SDK/NDK
-      # provisioning; switched back to JDK 8 below before Gradle runs, since
-      # AGP 3.3.3 (pinned in build.gradle) requires JDK 8.
-      - uses: actions/setup-java@v4
+      # Java 17 diperlukan oleh AGP 8.9.2
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: zulu
           java-version: '17'
+          cache: gradle
 
-      # Android SDK (compileSdk 31 / buildTools 31.0.0, matches app/build.gradle
-      # and libcocos2dx/build.gradle). NDK pinned to r21e: last NDK line that
-      # reliably supports legacy ndk-build + GNU Make toolchain files used by
-      # cocos2dx's Android.mk/Application.mk. NDK r23+ removed ndk-build
-      # GCC-era toolchain shims; r18+ removed GCC entirely. Since
-      # app/build.gradle passes NDK_TOOLCHAIN_VERSION=4.9 (GCC) while
-      # Application.mk requests -std=c++2a (unsupported by GCC 4.9), the
-      # first CI run is expected to surface exactly this conflict — see
-      # note below.
-      - uses: android-actions/setup-android@v4
+      # Android SDK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
 
-      - name: Install SDK platform / build-tools / NDK
+      # SDK 36 dan NDK 28.2
+      - name: Install Android SDK and NDK
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-31" "build-tools;31.0.0" "platform-tools" "ndk;21.4.7075529"
 
-      - name: Point Gradle at NDK r21e
+          sdkmanager \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "platform-tools" \
+            "ndk;28.2.13676358"
+
+      # Konfigurasi SDK
+      - name: Configure Android SDK
         working-directory: projects/NarutoSenki/proj.android-studio
         run: |
-          echo "ndk.dir=$ANDROID_HOME/ndk/21.4.7075529" >> local.properties
-          echo "sdk.dir=$ANDROID_HOME" >> local.properties
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-      # Switch back to JDK 8 for the actual Gradle/AGP 3.3.3 build.
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '8'
+      # Pastikan Java tidak berubah ke Java 8
+      - name: Verify Java and Gradle
+        working-directory: projects/NarutoSenki/proj.android-studio
+        run: |
+          java -version
+          echo "JAVA_HOME=$JAVA_HOME"
+          ./gradlew --version
 
-      - name: Grant execute to gradlew
+      # Izin menjalankan Gradle
+      - name: Grant execute permission
         working-directory: projects/NarutoSenki/proj.android-studio
         run: chmod +x gradlew
 
-      - name: assembleDebug
+      # Build APK
+      - name: Build Debug APK
         working-directory: projects/NarutoSenki/proj.android-studio
-        run: ./gradlew assembleDebug --stacktrace --info
+        run: |
+          ./gradlew assembleDebug --stacktrace
 
+      # Cari APK
       - name: Locate APK
         if: always()
         run: find . -name "*.apk"
 
+      # Upload APK
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
@@ -75,6 +82,7 @@ jobs:
           name: narutosenki-test-apk
           path: '**/*.apk'
 
+      # Upload log jika gagal
       - name: Upload build logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
